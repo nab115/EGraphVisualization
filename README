@@ -1,0 +1,5 @@
+AStar contains the visualization for Weighted A* search. EGraph contains the visualization for EGraph search. Each uses a javascript file with the same name yet
+with "_old" attached to it. Currently working on refactoring the code to allow for the combination of these files into one html so that each mirrors the other in terms of
+start, end, and obstacles.
+
+AStar_EGraphs is the combined visualization for the two algorithms.
