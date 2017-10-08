@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<body style='overflow:hidden'>
+<script src="Cell.js"></script>
+<section>
+<div id="canvasesdiv" style="position:relative; width:500px; height:500px">
+<canvas id="myCanvas"
+style="z-index: 1;
+position:absolute;
+left:0px;
+top:0px;
+" height="500px" width="500">
+This text is displayed if your browser does not support HTML5 Canvas.
+</canvas>
+<canvas id="lines"
+style="z-index: 2;
+position:absolute;
+left:0px;
+top:0px;
+" height="500px" width="500">
+This text is displayed if your browser does not support HTML5 Canvas.
+</canvas>
+<canvas id="myCanvas2"
+style="z-index: 1;
+position:absolute;
+left:300px;
+top:0px;
+" height="500px" width="500">
+This text is displayed if your browser does not support HTML5 Canvas.
+</canvas>
+</div>
+<h1>This is the EGraph visualization</h1>
+X Position: <input id="xPos" type="number"><br>
+Y Position: <input id="yPos" type="number"><br>
+Epsilon: 	<input id="eps" type="number"><br>
+WEpsilon: 	<input id="weps" type="number"><br>
+<button onclick="setStart()">Set Start</button>
+<button onclick="setGoal()">Set Goal</button>
+<button onclick="setEpsilon()">Set Epsilon</button>
+<button onclick="setWEpsilon()">Set WEpsilon</button>
+<button onclick="computePathTo()">Find Path</button>
+<script>
+//initialize the cells of the grid to be used
+var INFINITE = 100000;
+var close = [];
+var open = [];
+var ECells = [];
+var c = document.getElementById("myCanvas");
+var lineDraw = document.getElementById("lines");
+var egraph = document.getElementById("myCanvas2");
+var x_ = document.getElementById("xPos");
+var y_ = document.getElementById("yPos");
+var eps_ = document.getElementById("eps");
+var weps_ = document.getElementById("weps");
+lineDraw.addEventListener("click", getClickPosition, false);
+var startX, startY, goalX, goalY;
+var epsilon = 1;
+var wepsilon = 1;
+var ctx = c.getContext("2d");
+var ctx2 = lineDraw.getContext("2d");
+var ctx3 = egraph.getContext("2d");
+var cellQ = 20;
+var r = [];
+for(var i = 0; i < cellQ; i++){
+	r.push(new Row(cellQ, 20, i*20));
+}
+paint();
+
+
+//FUNCTOION DECLARATIONS
+
+function computePathTo(){
+	setNeighs(r);
+	start = r[startY].cells[startX];
+	goal = r[goalY].cells[goalX];
+	updateEGraph();
+	for(i = 0; i < cellQ; i++){
+		for(j = 0; j < cellQ; j++){
+			r[i].cells[j].isExpanded = false;
+			r[j].cells[i].g = INFINITE;
+			r[j].cells[i].h = EHeuristic(r[j].cells[i]);
+		}
+	}
+	start.g = 0;
+	open.splice(0, open.length);
+	close.splice(0, close.length);
+	open.push(start);
+	improvePath();
+	drawPath();
+}
+function improvePath(){
+	var s, temp, index;
+	var count = 0;
+	while(open.length != 0){
+		count++;
+		index = getS(open)
+		s = open[index];
+		open.splice(index, 1);
+		close.push(s);
+		s.isExpanded = true;
+		for(i = 0; i < s.neighs.length; i++){
+			temp = s.neighs[i];
+			if(temp.g > cost(s, temp) + s.g && !close.includes(temp)){
+				temp.previous = s;
+				temp.g = cost(s, temp) + s.g;
+				open.push(temp);
+			}
+		}
+		if((s == goal)) break;
+	}
+}
+function getS(o){
+	var minCellIndex = 0;
+	var maxF = INFINITE;
+	var temp;
+	var returnCell;
+	for(i = 0; i < open.length; i++){
+		temp = open[i];
+		if((temp.g + 1*temp.h) < maxF) {
+			maxF = temp.g + 1*temp.h;
+			minCellIndex = i;
+		}
+	}
+	return minCellIndex;
+}
+function updateEGraph(){
+	var temp;
+	setENeighs(r);
+	for(i = 0; i < ECells.length; i++){
+		ECells[i].f = INFINITE;
+	}
+	goal.f = 0;
+	open.splice(0, open.length);
+	close.splice(0, close.length);
+	open.push(goal);
+	for(i = 0; i < ECells.length; i++){
+		temp = ECells[i];
+		setEHeuristic(temp);
+	}
+}
+function setEHeuristic(c){
+	var s, temp, index;
+	while(open.length != 0){
+		index = getES(open)
+		s = open[index];
+		open.splice(index, 1);
+		close.push(s);
+		for(i = 0; i < s.ENeighs.length; i++){
+			temp = s.ENeighs[i];
+			if(temp.f > ECost(s, temp) + s.f && !close.includes(temp)){
+				temp.previous = s;
+				temp.f = ECost(s, temp) + s.f;
+				open.push(temp);
+			}
+		}
+		if((s == c)) {
+			s.e = s.f;
+			break;
+		}
+	}
+}
+function getES(o){
+	var minCellIndex = 0;
+	var maxF = INFINITE;
+	var temp;
+	var returnCell;
+	for(i = 0; i < open.length; i++){
+		temp = open[i];
+		if((temp.f) < maxF) {
+			maxF = temp.f;
+			minCellIndex = i;
+		}
+	}
+	return minCellIndex;
+}
+function heuristic(c){
+	return Math.sqrt((goalX - (c.x/20)) * (goalX - (c.x/20)) + (goalY - (c.y/20)) * (goalY - (c.y/20)));
+}
+function heuristic2(c1, c2){
+	return Math.sqrt(((c2.x/20) - (c1.x/20)) * ((c2.x/20) - (c1.x/20)) + ((c2.y/20) - (c1.y/20)) * ((c2.y/20) - (c1.y/20)));
+}
+function EHeuristic(c){
+	var max = INFINITE;
+	for(k = 0; k < ECells.length; k++){
+		if((epsilon * heuristic2(c, ECells[k]) + ECells[k].e) < max){
+			max = epsilon * heuristic2(c, ECells[k]) + ECells[k].e;
+		}
+	}
+	if((epsilon * heuristic(c) < max)){
+			max = epsilon * heuristic(c);
+	}
+	return max;
+}
+function cost(c1, c2){
+	if(c1.x == c2.x || c1.y == c2.y){
+		return 1;
+	}
+	else return Math.sqrt(2);
+}
+function ECost(c1, c2){
+	if(c1.x == c2.x || c1.y == c2.y){
+		return 1;
+	}
+	else if(c1 == goal || c2 == goal){
+		return epsilon * Math.sqrt(((c2.x/20) - (c1.x/20)) * ((c2.x/20) - (c1.x/20)) + ((c2.y/20) - (c1.y/20)) * ((c2.y/20) - (c1.y/20)));
+	}
+	else return Math.sqrt(2);
+}
+function setNeighs(r){
+	for(y=0; y<cellQ; y++){
+		for(x=0; x<cellQ; x++){
+			r[y].cells[x].neighs = [];
+			if (!r[y].cells[x].isObstacle){
+					for (j = -1; j <= 1; j++) {
+						if (y + j >= 0 && y + j <= cellQ - 1) {
+							for (k = -1; k <= 1; k++) {
+								if (x + k >= 0 && x + k <= cellQ - 1 ) {
+									if (y+j!=y || x+k!=x){
+										if (!r[y + j].cells[x + k].isObstacle) {
+											r[y].cells[x].neighs.push(r[y+j].cells[x+k]);									
+										}
+									}
+								}
+							}
+						}
+					}
+			}
+			r[y].cells[x].neighsQ = r[y].cells[x].neighs.length;
+		}
+	}
+}
+function setENeighs(r){
+	for(y=0; y<cellQ; y++){
+		for(x=0; x<cellQ; x++){
+			r[y].cells[x].ENeighs = [];
+			if (!r[y].cells[x].isObstacle && r[y].cells[x].isEGraph){
+				r[y].cells[x].ENeighs.push(r[goalY].cells[goalY]);
+					for (j = -1; j <= 1; j++) {
+						if (y + j >= 0 && y + j <= cellQ - 1) {
+							for (k = -1; k <= 1; k++) {
+								if (x + k >= 0 && x + k <= cellQ - 1 ) {
+									if (y+j!=y || x+k!=x){
+										if (!r[y + j].cells[x + k].isObstacle && r[y + j].cells[x + k].isEGraph && !r[y + j].cells[x + k].isGoal) {
+											r[y].cells[x].ENeighs.push(r[y+j].cells[x+k]);									
+										}
+									}
+								}
+							}
+						}
+					}
+			}
+			r[y].cells[x].neighsQ = r[y].cells[x].neighs.length;
+		}
+	}
+}
+function setStart(){
+	for(i = 0; i < cellQ; i++){
+		for(j = 0; j < cellQ; j++){
+			if(r[i].cells[j].isStart){
+				r[i].cells[j].isStart = false;
+				ctx.fillStyle="#ffffff";
+				ctx.fillRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.rect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.stroke();
+				ctx.fillStyle="#000000";
+			}
+		}
+	}
+	startX = x_.value;
+	startY = y_.value;
+	r[startY].cells[startX].isStart = true;
+	updatePaint();
+}
+function setGoal(){
+	for(i = 0; i < cellQ; i++){
+		for(j = 0; j < cellQ; j++){
+			if(r[i].cells[j].isGoal){
+				r[i].cells[j].isGoal = false;
+				ctx.fillStyle="#ffffff";
+				ctx.fillRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.rect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.stroke();
+				ctx.fillStyle="#000000";
+			}
+		}
+	}
+	goalX = x_.value;
+	goalY = y_.value;
+	r[goalY].cells[goalX].isGoal = true;
+	updatePaint();
+}
+function setEpsilon(){
+	epsilon = eps_.value;
+}
+function setWEpsilon(){
+	wepsilon = weps_.value;
+}
+function getClickPosition(e){
+	var rect = c.getBoundingClientRect();
+	var xoff = rect.left;
+	var yoff = rect.top;
+	var xPosition = Math.floor((e.clientX-xoff)/20);
+	var yPosition = Math.floor((e.clientY-yoff)/20);
+	if(!r[yPosition].cells[xPosition].isObstacle) r[yPosition].cells[xPosition].isFutureObstacle = true;
+	else r[yPosition].cells[xPosition].wasObstacle = true;
+	updatePaint();
+}
+function paint(){
+	for(i = 0; i < cellQ; i++){
+		for(j = 0; j < cellQ; j++){
+			ctx.rect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+			ctx.stroke();
+		}
+	}
+}
+function updatePaint(){
+	ctx2.clearRect(0, 0, 500, 500);
+	for(i = 0; i < cellQ; i++){
+		for(j = 0; j < cellQ; j++){
+			if(r[i].cells[j].isFutureObstacle && !r[i].cells[j].isStart && !r[i].cells[j].isGoal){
+				r[i].cells[j].isExpanded = false;
+				if(r[i].cells[j].isEGraph){
+					r[i].cells[j].isEGraph = false;
+					var index = ECells.indexOf(r[i].cells[j])
+					ECells.splice(index, 1);
+				}
+				ctx.fillRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				r[i].cells[j].isFutureObstacle = false;
+				r[i].cells[j].isObstacle = true;
+			}
+			else if(r[i].cells[j].wasObstacle && !r[i].cells[j].isStart && !r[i].cells[j].isGoal){	
+				ctx.clearRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.rect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.stroke();
+				r[i].cells[j].wasObstacle = false;
+				r[i].cells[j].isObstacle = false;
+			}
+			else if(r[i].cells[j].isStart){
+				ctx.fillStyle="#00FF00";
+				ctx.fillRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.rect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.stroke();
+				ctx.fillStyle="#000000";
+			}
+			else if(r[i].cells[j].isGoal){
+				ctx.fillStyle="#FF0000";
+				ctx.fillRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.rect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.stroke();
+				ctx.fillStyle="#000000";
+			}
+			else if(r[i].cells[j].isEGraph){
+				ctx.fillStyle="#0000FF";
+				ctx.fillRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.rect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx.stroke();
+				ctx.fillStyle="#000000";
+			}
+			else if(r[i].cells[j].isExpanded){
+				ctx2.fillStyle="#D3D3D3";
+				ctx2.fillRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				ctx2.fillStyle="#000000";
+				ctx2.strokeRect(r[i].cells[j].x, r[i].cells[j].y, 20, 20);
+				r[i].cells[j].isExpanded = false;
+			}
+		}
+	}
+}
+function drawPath(){
+	var temp = goal;
+	ctx2.clearRect(0, 0, 500, 500);
+	updatePaint();
+	while(temp != start){
+		ctx2.beginPath();
+		ECells.push(temp);
+		temp.isEGraph = true;
+		ctx2.moveTo(temp.x + 10, temp.y + 10);
+		ctx2.lineTo(temp.previous.x + 10, temp.previous.y + 10);
+		ctx2.stroke();
+		temp = temp.previous;
+	}
+	start.isEGraph = true;
+}
+function findPath(){
+	for(i = 0; i < cellQ; i++){
+		for(j = 0; j < cellQ; j++){
+			r[i].cells[j].isExpanded = false;
+		}
+	}
+	updateEGraph();
+	computePath();
+}
+function computePath(){
+
+}
+function dijkstra(beg, end){
+	
+}
+</script>
+</body>
+</html>

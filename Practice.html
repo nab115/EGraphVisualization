@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<body style='overflow:scroll'>
+<script src="Cell.js"></script>
+	<div id="AStarCanvas" style="position:absolute; width:500px; height:500px;">
+		<canvas id="AStarLayer"
+			style="z-index: 1;
+			position:absolute;
+			left:600px;
+			top:0px;
+			" height="400px" width="500">
+			This text is displayed if your browser does not support HTML5 Canvas.
+		</canvas>
+		<canvas id="AStarGrid"
+			style="z-index: 2;
+			position:absolute;
+			left:600px;
+			top:0px;
+			" height="400px" width="500">
+			This text is displayed if your browser does not support HTML5 Canvas.
+		</canvas>
+		<canvas id="EGraphLayer"
+			style="z-index: 1;
+			position:absolute;
+			left:0px;
+			top:0px;
+			" height="400px" width="500">
+			This text is displayed if your browser does not support HTML5 Canvas.
+		</canvas>
+		<canvas id="EGraphGrid"
+			style="z-index: 2;
+			position:absolute;
+			left:0px;
+			top:0px;
+			" height="400px" width="500">
+			This text is displayed if your browser does not support HTML5 Canvas.
+		</canvas>
+		<div style="position: absolute; top: 400px">
+			<h1>This is the EGraph visualization</h1>
+			X Position: <input id="xPos" type="number"><br>
+			Y Position: <input id="yPos" type="number"><br>
+			Epsilon: 	<input id="eps" type="number"><br>
+			WEpsilon: 	<input id="weps" type="number"><br>
+			<button onclick="setStart()">Set Start</button>
+			<button onclick="setGoal()">Set Goal</button>
+			<button onclick="setEpsilon()">Set Epsilon</button>
+			<button onclick="setWEpsilon()">Set WEpsilon</button>
+			<button onclick="computePathTo()">Find Path</button>
+			<button onclick="resetEGraph()">Reset EGraph</button>
+			Directions: Fill in the x and y coordinates for the start location. Then click "Set Start". Do the same for the Goal. Set Epsilon by entering a value in its respecive box, and then clicking the Set Epsilon button. Set WEpsilon the same way. Epsilon is used to bias the heuristic towards
+			using paths in the egraph, while wepsilon is used as in regular weighted A* to bias the distance function towards points closer to the goal. Each are set to 1 by default.
+			Click on any cell in the grid to make it an obstacle. Click any obstacle to make it free space.
+			Once ready, click Find Path. The line that results is the path found. The grey cells represent expanded states. Click anywhere on the grid to reset the grid. This will show blue cells which are now part of the egraph.<br>
+		</div>
+	</div>
+<script>
+	function setStart(){
+		setStartEG();
+		setStartAS();
+	}
+	function setGoal(){
+		setGoalEG();
+		setGoalAS();
+	}
+	function computePathTo(){
+		computePathToEG()
+		computePathToAS();
+	}
+	function setWEpsilon(){
+		setEpsilonAS();
+		setWEpsilonEG();
+	}
+</script>
+<script src="AStarSearch.js"></script>
+<script src="EGraphSearch.js"></script>
+</script>
+</body>
+</html>
